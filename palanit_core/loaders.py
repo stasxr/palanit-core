@@ -117,19 +117,24 @@ def _tool_from(tool: dict[str, Any], server: str = "", path: str = "") -> ToolDe
     )
 
 
+MAX_WALK_DEPTH = 200  # guard against pathologically-nested input blowing the stack
+
+
 def walk_strings(obj: Any, prefix: str = "") -> list[tuple[str, str]]:
     """Yield (json_path, string_value) for every string in a JSON structure."""
     out: list[tuple[str, str]] = []
 
-    def _walk(node: Any, path: str) -> None:
+    def _walk(node: Any, path: str, depth: int) -> None:
+        if depth > MAX_WALK_DEPTH:
+            return
         if isinstance(node, str):
             out.append((path, node))
         elif isinstance(node, dict):
             for k, v in node.items():
-                _walk(v, f"{path}/{k}")
+                _walk(v, f"{path}/{k}", depth + 1)
         elif isinstance(node, list):
             for i, v in enumerate(node):
-                _walk(v, f"{path}/{i}")
+                _walk(v, f"{path}/{i}", depth + 1)
 
-    _walk(obj, prefix)
+    _walk(obj, prefix, 0)
     return out
